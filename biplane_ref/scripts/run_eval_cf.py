@@ -16,11 +16,14 @@ from utils.eval import alignment
 
 
 
-def eval_cf_main(dataset, subject, task, trial, side, filter_type, dim, tuning = False, knee_gain = 0.9):
+def eval_cf_main(dataset, subject, task, trial, side, filter_type, dim, tuning = False, knee_gain = 0.9, coupling = 'walker'):
     
     ''' evaluate and obtain RMSD for constraint feedback (CF) '''
 
     percent = int(knee_gain * 100)
+    from utils import coupling_models
+    suffix = coupling_models.folder_suffix(coupling)
+    print(f'Knee coupling: {coupling}')
 
     filter_type     = filter_type.upper()
     selected_filter = filter_type
@@ -74,7 +77,7 @@ def eval_cf_main(dataset, subject, task, trial, side, filter_type, dim, tuning =
                                 mocap_kinematics[joint] = mocap_kinematics[joint].fillna(-100)
 
                             ik_folder = 'ik'
-                            mc10_fn = f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p/{ik_folder}/{subject}/mc10/knee_kinematics_{selected_task.side}_{selected_task.task}_{selected_task.trial}.pkl'
+                            mc10_fn = f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p{suffix}/{ik_folder}/{subject}/mc10/knee_kinematics_{selected_task.side}_{selected_task.task}_{selected_task.trial}.pkl'
                             
                             with open(mc10_fn, 'rb') as f:
                                 mc10_kinematics = pickle.load(f)
@@ -171,21 +174,21 @@ def eval_cf_main(dataset, subject, task, trial, side, filter_type, dim, tuning =
 
                             eval_folder = 'eval'
 
-                            output_mc10_fn = f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p/{eval_folder}/{subject}/mc10/knee_kinematics_{selected_task.side}_{selected_task.task}_{selected_task.trial}.pkl'
-                            if not os.path.exists(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p/{eval_folder}/{subject}/mc10/'):
-                                os.makedirs(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p/{eval_folder}/{subject}/mc10/')
+                            output_mc10_fn = f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p{suffix}/{eval_folder}/{subject}/mc10/knee_kinematics_{selected_task.side}_{selected_task.task}_{selected_task.trial}.pkl'
+                            if not os.path.exists(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p{suffix}/{eval_folder}/{subject}/mc10/'):
+                                os.makedirs(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p{suffix}/{eval_folder}/{subject}/mc10/')
                             with open(output_mc10_fn, 'wb') as f:
                                 pickle.dump(trimmed_mc10_kinematics, f)
 
-                            output_mocap_fn = f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p/{eval_folder}/{subject}/mocap/knee_kinematics_{selected_task.side}_{selected_task.task}_{selected_task.trial}.pkl'
-                            if not os.path.exists(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p/{eval_folder}/{subject}/mocap/'):
-                                os.makedirs(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p/{eval_folder}/{subject}/mocap/')
+                            output_mocap_fn = f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p{suffix}/{eval_folder}/{subject}/mocap/knee_kinematics_{selected_task.side}_{selected_task.task}_{selected_task.trial}.pkl'
+                            if not os.path.exists(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p{suffix}/{eval_folder}/{subject}/mocap/'):
+                                os.makedirs(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p{suffix}/{eval_folder}/{subject}/mocap/')
                             with open(output_mocap_fn, 'wb') as f:
                                 pickle.dump(trimmed_mocap_kinematics, f)
 
-                            output_biplane_fn = f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p/{eval_folder}/{subject}/biplane/knee_kinematics_{selected_task.side}_{selected_task.task}_{selected_task.trial}.pkl'
-                            if not os.path.exists(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p/{eval_folder}/{subject}/biplane/'):
-                                os.makedirs(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p/{eval_folder}/{subject}/biplane/')
+                            output_biplane_fn = f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p{suffix}/{eval_folder}/{subject}/biplane/knee_kinematics_{selected_task.side}_{selected_task.task}_{selected_task.trial}.pkl'
+                            if not os.path.exists(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p{suffix}/{eval_folder}/{subject}/biplane/'):
+                                os.makedirs(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p{suffix}/{eval_folder}/{subject}/biplane/')
                             with open(output_biplane_fn, 'wb') as f:
                                 pickle.dump(trimmed_knee_kinematics, f)
 
@@ -202,21 +205,21 @@ def eval_cf_main(dataset, subject, task, trial, side, filter_type, dim, tuning =
                                 print(f'MC10 with Mocap: {rmsd_mc10_mocap[joint]:.2f}')
                                 print('---')
 
-                            output_rmsd_mc10_biplane_fn = f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p/{eval_folder}/{subject}/rmsd_mc10_biplane_{selected_task.side}_{selected_task.task}_{selected_task.trial}.pkl'
-                            if not os.path.exists(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p/{eval_folder}/{subject}/'):
-                                os.makedirs(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p/{eval_folder}/{subject}/')
+                            output_rmsd_mc10_biplane_fn = f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p{suffix}/{eval_folder}/{subject}/rmsd_mc10_biplane_{selected_task.side}_{selected_task.task}_{selected_task.trial}.pkl'
+                            if not os.path.exists(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p{suffix}/{eval_folder}/{subject}/'):
+                                os.makedirs(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p{suffix}/{eval_folder}/{subject}/')
                             with open(output_rmsd_mc10_biplane_fn, 'wb') as f:
                                 pickle.dump(rmsd_mc10_biplane, f)
 
-                            output_rmsd_mc10_mocap_fn = f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p/{eval_folder}/{subject}/rmsd_mc10_mocap_{selected_task.side}_{selected_task.task}_{selected_task.trial}.pkl'
-                            if not os.path.exists(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p/{eval_folder}/{subject}/'):
-                                os.makedirs(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p/{eval_folder}/{subject}/')
+                            output_rmsd_mc10_mocap_fn = f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p{suffix}/{eval_folder}/{subject}/rmsd_mc10_mocap_{selected_task.side}_{selected_task.task}_{selected_task.trial}.pkl'
+                            if not os.path.exists(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p{suffix}/{eval_folder}/{subject}/'):
+                                os.makedirs(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p{suffix}/{eval_folder}/{subject}/')
                             with open(output_rmsd_mc10_mocap_fn, 'wb') as f:
                                 pickle.dump(rmsd_mc10_mocap, f)
 
-                            output_rmsd_mocap_biplane_fn = f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p/{eval_folder}/{subject}/rmsd_mocap_biplane_{selected_task.side}_{selected_task.task}_{selected_task.trial}.pkl'
-                            if not os.path.exists(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p/{eval_folder}/{subject}/'):
-                                os.makedirs(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p/{eval_folder}/{subject}/')
+                            output_rmsd_mocap_biplane_fn = f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p{suffix}/{eval_folder}/{subject}/rmsd_mocap_biplane_{selected_task.side}_{selected_task.task}_{selected_task.trial}.pkl'
+                            if not os.path.exists(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p{suffix}/{eval_folder}/{subject}/'):
+                                os.makedirs(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p{suffix}/{eval_folder}/{subject}/')
                             with open(output_rmsd_mocap_biplane_fn, 'wb') as f:
                                 pickle.dump(rmsd_mocap_biplane, f)
 

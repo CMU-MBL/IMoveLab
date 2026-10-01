@@ -1,0 +1,21 @@
+# --- large / local-only files (never push) ---
+Miniconda3-*.sh
+biplane_ref/data/*
+!biplane_ref/data/README.md
+mocap_ref/data/*
+!mocap_ref/data/README.md
+biplane_ref/figures/
+
+# run outputs (regenerate by running the pipeline), but keep the tuned filter parameters
+biplane_ref/outputs/*
+!biplane_ref/outputs/README.md
+!biplane_ref/outputs/HAKnee/
+biplane_ref/outputs/HAKnee/*
+!biplane_ref/outputs/HAKnee/tuning_out/
+mocap_ref/outputs/*
+!mocap_ref/outputs/README.md
+
+# python / OS clutter
+__pycache__/
+*.pyc
+.DS_Store

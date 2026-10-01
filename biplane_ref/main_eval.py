@@ -24,12 +24,13 @@ def main():
 
     parser.add_argument('--do_cf', action = 'store_true') # whether to run IK with constraint feedback (NOTE: only applicable for VQF, EKF, MAD, and MAH)
     parser.add_argument('--knee_gain', type = float, default = 0.9) # gain for knee constraint feedback, only applicable if --do_cf is specified
+    parser.add_argument('--coupling', type = str, default = 'walker', choices = ['walker', 'reuben', 'healthy_global', 'healthy_loso']) # knee coupling curve for --do_cf
 
 
     args = parser.parse_args()
     
     if args.do_cf:
-        run_eval_cf.eval_cf_main(dataset = args.dataset, subject = args.subject, task = args.task, trial = args.trial, side = args.side, filter_type = args.filter_type, dim = args.dim, tuning = False, knee_gain = args.knee_gain)
+        run_eval_cf.eval_cf_main(dataset = args.dataset, subject = args.subject, task = args.task, trial = args.trial, side = args.side, filter_type = args.filter_type, dim = args.dim, tuning = False, knee_gain = args.knee_gain, coupling = args.coupling)
 
     else:
         run_eval.eval_main(dataset = args.dataset, subject = args.subject, task = args.task, trial = args.trial, side = args.side, filter_type = args.filter_type, dim = args.dim, tuning = False, do_opensense = args.do_opensense)

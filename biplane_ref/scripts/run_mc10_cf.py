@@ -21,6 +21,7 @@ from scipy.spatial.transform import Rotation as R
 from utils.mc10 import mc10_processing, mc10_ik, mc10_calibration
 from utils.mocap import fp_processing
 from utils import common
+from utils import coupling_models
 from constants import constant_mocap, constant_mc10, constant_meta, constant_common
 
 
@@ -82,8 +83,8 @@ def get_all_joints(seg2sens, sensor_frame, timestep = None):
     return joint_frame
 
 
-def correct_nonsagittal_knee(joint_quat, seg2sens, joint_aligned, sensor_transforms, timestep, joint, prox, dist, alpha):
-    ''' correct knee adduction/abduction and internal/external rotation based on the knee coupling (Reuben et al., 1986)'''
+def correct_nonsagittal_knee(joint_quat, seg2sens, joint_aligned, sensor_transforms, timestep, joint, prox, dist, alpha, coupling = None):
+    ''' correct knee adduction/abduction and internal/external rotation based on the knee coupling (Walker, Rovick & Robertson, J Biomech 1988;21:965-974, eqs 1-2; fitted to cadaver data of Reuben et al. 1986)'''
 
 
     joint_rot = R.from_quat(quaternion.as_float_array(joint_quat[joint]), scalar_first = True)
@@ -94,8 +95,10 @@ def correct_nonsagittal_knee(joint_quat, seg2sens, joint_aligned, sensor_transfo
         knee_add *= -1 
         knee_rot *= -1
 
-    knee_add_coupled = 0.0791*knee_flex - 5.733e-4*knee_flex**2 - 7.682e-6*knee_flex**3 + 5.759e-8*knee_flex**4
-    knee_rot_coupled = 0.3695*knee_flex - 2.958e-3*knee_flex**2 + 7.666e-6*knee_flex**3
+    if coupling is None: # original Walker et al. (1988) coupling
+        coupling = coupling_models.get_coupling('walker')
+    knee_add_coupled = coupling[0](knee_flex)
+    knee_rot_coupled = coupling[1](knee_flex)
 
     knee_add_error = alpha * (knee_add_coupled - knee_add)
     knee_rot_error = alpha * (knee_rot_coupled - knee_rot)
@@ -148,11 +151,13 @@ def one_step_update(filter, data, Q, sensor_name, t, enable_vqf = False):
     return Q_
 
 
-def mc10_ik_cf_main(dataset, subject, task, trial, side, filter_type, dim, tuning = False, filter_params = None, knee_gain = 0.9, savefig = False):
+def mc10_ik_cf_main(dataset, subject, task, trial, side, filter_type, dim, tuning = False, filter_params = None, knee_gain = 0.9, savefig = False, coupling = 'walker'):
 
     ''' Run IK for the MC10 Biostamp data '''
 
     alpha = 1*knee_gain
+    suffix = coupling_models.folder_suffix(coupling)
+    print(f'Knee coupling: {coupling}')
 
     filter_type     = filter_type.upper()
     selected_filter = filter_type
@@ -183,6 +188,7 @@ def mc10_ik_cf_main(dataset, subject, task, trial, side, filter_type, dim, tunin
         for subject in subject_list:
 
             print(f'*** Subject {subject}')
+            coupling_fns = coupling_models.get_coupling(coupling, subject)
             test = 1    
 
             print('Getting MC10 data ...')
@@ -288,7 +294,7 @@ def mc10_ik_cf_main(dataset, subject, task, trial, side, filter_type, dim, tunin
 
                                         joint_quat = get_all_joints(seg2sens, filter_aligned, timestep = timestep)
 
-                                        corrected_joint_aligned, corrected_joint_raw = correct_nonsagittal_knee(joint_quat, seg2sens, filter_aligned, sensor_transforms, timestep, joint = 'knee_r', prox = 'thigh_r', dist = 'shank_r', alpha = alpha)
+                                        corrected_joint_aligned, corrected_joint_raw = correct_nonsagittal_knee(joint_quat, seg2sens, filter_aligned, sensor_transforms, timestep, joint = 'knee_r', prox = 'thigh_r', dist = 'shank_r', alpha = alpha, coupling = coupling_fns)
                                         filter_aligned['shank_r'][timestep] = 1*corrected_joint_aligned
                                         filter_raw['shank_r'][timestep]     = 1*corrected_joint_raw
                                         state_r = filter['shank_r'].state
@@ -296,7 +302,7 @@ def mc10_ik_cf_main(dataset, subject, task, trial, side, filter_type, dim, tunin
                                         state_r['accQuat']      = filter[sensor_name].quatMultiply(corrected_joint_raw/np.linalg.norm(corrected_joint_raw), filter[sensor_name].quatConj(g_r)) # NOTE: reset the internal state of the filter too
                                         filter['shank_r'].state = state_r
 
-                                        corrected_joint_aligned, corrected_joint_raw = correct_nonsagittal_knee(joint_quat, seg2sens, filter_aligned, sensor_transforms, timestep, joint = 'knee_l', prox = 'thigh_l', dist = 'shank_l', alpha = alpha)
+                                        corrected_joint_aligned, corrected_joint_raw = correct_nonsagittal_knee(joint_quat, seg2sens, filter_aligned, sensor_transforms, timestep, joint = 'knee_l', prox = 'thigh_l', dist = 'shank_l', alpha = alpha, coupling = coupling_fns)
                                         filter_aligned['shank_l'][timestep] = 1*corrected_joint_aligned
                                         filter_raw['shank_l'][timestep]     = 1*corrected_joint_raw
                                         state_l = filter['shank_l'].state
@@ -314,9 +320,9 @@ def mc10_ik_cf_main(dataset, subject, task, trial, side, filter_type, dim, tunin
                                 for joint_name in knee_kinematics.keys():
                                     knee_kinematics[joint_name] = low_pass_filter(knee_kinematics[joint_name], constant_mc10.PROCESSING_RATE, cutoff = 6, order = 4)
 
-                                output_fn = f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{int(alpha*100)}p/ik/{subject}/mc10/knee_kinematics_{selected_task.side}_{selected_task.task}_{selected_task.trial}.pkl'
-                                if not os.path.exists(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{int(alpha*100)}p/ik/{subject}/mc10/'):
-                                    os.makedirs(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{int(alpha*100)}p/ik/{subject}/mc10/')
+                                output_fn = f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{int(alpha*100)}p{suffix}/ik/{subject}/mc10/knee_kinematics_{selected_task.side}_{selected_task.task}_{selected_task.trial}.pkl'
+                                if not os.path.exists(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{int(alpha*100)}p{suffix}/ik/{subject}/mc10/'):
+                                    os.makedirs(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{int(alpha*100)}p{suffix}/ik/{subject}/mc10/')
 
                                 with open(output_fn, 'wb') as f:
                                     pickle.dump(knee_kinematics, f)
@@ -369,11 +375,11 @@ def mc10_ik_cf_main(dataset, subject, task, trial, side, filter_type, dim, tunin
 
                                         joint_quat = get_all_joints(seg2sens, filter_aligned, timestep = timestep)
 
-                                        corrected_joint_aligned, corrected_joint_raw = correct_nonsagittal_knee(joint_quat, seg2sens, filter_aligned, sensor_transforms, timestep, joint = 'knee_r', prox = 'thigh_r', dist = 'shank_r', alpha = alpha)
+                                        corrected_joint_aligned, corrected_joint_raw = correct_nonsagittal_knee(joint_quat, seg2sens, filter_aligned, sensor_transforms, timestep, joint = 'knee_r', prox = 'thigh_r', dist = 'shank_r', alpha = alpha, coupling = coupling_fns)
                                         filter_aligned['shank_r'][timestep] = 1*corrected_joint_aligned
                                         filter_raw['shank_r'][timestep]     = 1*corrected_joint_raw
 
-                                        corrected_joint_aligned, corrected_joint_raw = correct_nonsagittal_knee(joint_quat, seg2sens, filter_aligned, sensor_transforms, timestep, joint = 'knee_l', prox = 'thigh_l', dist = 'shank_l', alpha = alpha)
+                                        corrected_joint_aligned, corrected_joint_raw = correct_nonsagittal_knee(joint_quat, seg2sens, filter_aligned, sensor_transforms, timestep, joint = 'knee_l', prox = 'thigh_l', dist = 'shank_l', alpha = alpha, coupling = coupling_fns)
                                         filter_aligned['shank_l'][timestep] = 1*corrected_joint_aligned
                                         filter_raw['shank_l'][timestep]     = 1*corrected_joint_raw
 
@@ -388,9 +394,9 @@ def mc10_ik_cf_main(dataset, subject, task, trial, side, filter_type, dim, tunin
                                 for joint_name in knee_kinematics.keys():
                                     knee_kinematics[joint_name] = low_pass_filter(knee_kinematics[joint_name], constant_mc10.PROCESSING_RATE, cutoff = 6, order = 4)
 
-                                output_fn = f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{int(alpha*100)}p/ik/{subject}/mc10/knee_kinematics_{selected_task.side}_{selected_task.task}_{selected_task.trial}.pkl'
-                                if not os.path.exists(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{int(alpha*100)}p/ik/{subject}/mc10/'):
-                                    os.makedirs(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{int(alpha*100)}p/ik/{subject}/mc10/')
+                                output_fn = f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{int(alpha*100)}p{suffix}/ik/{subject}/mc10/knee_kinematics_{selected_task.side}_{selected_task.task}_{selected_task.trial}.pkl'
+                                if not os.path.exists(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{int(alpha*100)}p{suffix}/ik/{subject}/mc10/'):
+                                    os.makedirs(f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{int(alpha*100)}p{suffix}/ik/{subject}/mc10/')
 
                                 with open(output_fn, 'wb') as f:
                                     pickle.dump(knee_kinematics, f)

@@ -207,7 +207,7 @@ def correct_heading(joint_quat, seg2sens, adaptor_aligned, sensor_transforms, ti
 
 def correct_nonsagittal_knee(joint_quat, seg2sens, joint_aligned, sensor_transforms, timestep, joint, prox, dist, alpha):
 
-    ''' correct knee adduction/abduction and internal/external rotation based on the knee coupling (Reuben et al., 1986)'''
+    ''' correct knee adduction/abduction and internal/external rotation based on the knee coupling (Walker, Rovick & Robertson, J Biomech 1988;21:965-974, eqs 1-2; fitted to cadaver data of Reuben et al. 1986)'''
 
     joint_rot = R.from_quat(quaternion.as_float_array(joint_quat[joint]), scalar_first = True)
     knee_flex, knee_add, knee_rot = joint_rot.as_euler('ZXY', degrees = True)
