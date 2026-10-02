@@ -165,6 +165,13 @@ def eval_cf_main(dataset, subject, task, trial, side, filter_type, dim, tuning =
                                 trimmed_knee_kinematics[f'knee_flexion_{selected_task.side}'] *= -1
                                 trimmed_knee_kinematics[f'knee_rotation_{selected_task.side}'] *= -1
 
+                            # SAVE_UNALIGNED: synced but NOT first-frame aligned, for per-knee offset calibration (Coupling/imu_offset_calibration.py)
+                            unaligned_dir = f'outputs/{dataset}/bm_{filter_type.lower()}{dim.lower()}_constrained_{percent}p{suffix}/eval/{subject}/unaligned/'
+                            os.makedirs(unaligned_dir, exist_ok = True)
+                            with open(unaligned_dir + f'knee_kinematics_{selected_task.side}_{selected_task.task}_{selected_task.trial}.pkl', 'wb') as f:
+                                pickle.dump({'mc10': {k: np.asarray(v, dtype = float).copy() for k, v in trimmed_mc10_kinematics.items()},
+                                             'biplane': {k: np.asarray(v, dtype = float).copy() for k, v in trimmed_knee_kinematics.items()}}, f)
+
                             if apply_alignment:
                                 print('Applying alignment ...')
 
